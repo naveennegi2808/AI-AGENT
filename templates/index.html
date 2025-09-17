@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-robot"></i>
+                    <h1>AI Assistant</h1>
+                </div>
+                <div class="header-actions">
+                    {% if session_id %}
+                        <span class="session-info">Session: {{ session_id[:8] }}...</span>
+                    {% endif %}
+                    <a href="/status" class="btn btn-secondary">
+                        <i class="fas fa-info-circle"></i>
+                        Status
+                    </a>
+                    <form method="POST" action="/clear" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i>
+                            Clear
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <!-- Authorization Panel -->
+            <div class="auth-panel">
+                <div class="auth-title">
+                    <i class="fas fa-key"></i>
+                    Service Connections
+                </div>
+                <div class="auth-services">
+                    <div class="service-card">
+                        <div class="service-info">
+                            <i class="fab fa-google service-icon" style="color: #4285f4;"></i>
+                            <div class="service-details">
+                                <h4>Google Services</h4>
+                                <p>Gmail & Calendar integration</p>
+                            </div>
+                        </div>
+                        <div class="status-badge status-disconnected">
+                            <i class="fas fa-circle" style="font-size: 8px;"></i>
+                            <span>Not Connected</span>
+                        </div>
+                        <a href="/authorize" class="btn btn-primary">
+                            <i class="fas fa-link"></i>
+                            Connect
+                        </a>
+                    </div>
+                    
+                    <div class="service-card">
+                        <div class="service-info">
+                            <i class="fab fa-instagram service-icon" style="color: #e4405f;"></i>
+                            <div class="service-details">
+                                <h4>Instagram</h4>
+                                <p>Profile & media management</p>
+                            </div>
+                        </div>
+                        <div class="status-badge status-disconnected">
+                            <i class="fas fa-circle" style="font-size: 8px;"></i>
+                            <span>Not Connected</span>
+                        </div>
+                        <a href="/instagram/authorize" class="btn btn-primary">
+                            <i class="fas fa-link"></i>
+                            Connect
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Container -->
+            <div class="chat-container">
+                <div class="chat-header">
+                    <div class="chat-title">
+                        <i class="fas fa-comments"></i>
+                        Conversation
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    {% if conversation_history %}
+                        {% for message in conversation_history %}
+                            <div class="message message-{{ 'user' if message.type == 'human' else 'assistant' }}">
+                                <div class="message-header">
+                                    <i class="fas fa-{{ 'user' if message.type == 'human' else 'robot' }}"></i>
+                                    {{ 'You' if message.type == 'human' else 'Assistant' }}
+                                </div>
+                                <div class="message-content">{{ message.content }}</div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-messages">
+                            <i class="fas fa-comments"></i>
+                            <div>Start a conversation with your AI assistant</div>
+                            <p style="margin-top: 8px; font-size: 14px; opacity: 0.7;">
+                                Try asking about weather, sending emails, managing calendar events, or general questions!
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="chat-input">
+                    <form method="POST" class="input-form" id="chatForm">
+                        <div class="input-wrapper">
+                            <textarea 
+                                name="user_input" 
+                                class="text-input" 
+                                placeholder="Type your message here... (Shift+Enter for new line)"
+                                rows="1"
+                                id="messageInput"
+                                required
+                            ></textarea>
+                        </div>
+                        <button type="submit" class="send-btn" id="sendBtn">
+                            <i class="fas fa-paper-plane"></i>
+                            Send
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Response Section -->
+            {% if response %}
+            <div class="response-section">
+                <div class="response-card">
+                    <div class="response-header">
+                        <i class="fas fa-robot"></i>
+                        Assistant Response
+                    </div>
+                    <div class="response-content">{{ response }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+ <script src="/static/index.js"></script>
+</body>
+</html>
