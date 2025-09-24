@@ -10,6 +10,7 @@
     --accent-green: #10b981;
     --accent-red: #ef4444;
     --accent-yellow: #f59e0b;
+    --accent-linkedin: #0077b5;
     --border: #333333;
     --shadow: rgba(0, 0, 0, 0.3);
     --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -116,6 +117,11 @@ body {
     align-items: center;
     gap: 8px;
     font-size: 14px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
 }
 
 .btn-primary {
@@ -383,7 +389,7 @@ body {
 
 .auth-services {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 16px;
 }
 
@@ -416,6 +422,221 @@ body {
 .service-details p {
     font-size: 12px;
     color: var(--text-secondary);
+}
+
+.service-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-direction: column;
+}
+
+/* Upload Section - New Simplified Upload Panel */
+.upload-section {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.upload-section h4 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--accent-linkedin);
+}
+
+.upload-section p {
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.upload-section input[type="file"] {
+    margin-bottom: 12px;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    width: 100%;
+}
+
+.upload-section button {
+    background: var(--accent-linkedin);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.upload-section button:hover {
+    background: #005885;
+    transform: translateY(-1px);
+}
+
+#upload-status {
+    margin-top: 12px;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 14px;
+    display: none;
+}
+
+#upload-status.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-green);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    display: block;
+}
+
+#upload-status.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--accent-red);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    display: block;
+}
+
+.upload-success { 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.upload-success p {
+    margin: 0;
+    color: var(--accent-green);
+    font-weight: 500;
+}
+
+.clear-button { 
+    background-color: #6c757d; 
+    color: white; 
+    border: none; 
+    padding: 8px 16px; 
+    border-radius: 6px; 
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.clear-button:hover {
+    background-color: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* Legacy Upload Panel Styles (for backward compatibility) */
+.image-upload-panel {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.upload-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--accent-linkedin);
+}
+
+.upload-card {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.upload-area {
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px dashed var(--border);
+    margin: 16px;
+    border-radius: 8px;
+}
+
+.upload-area:hover {
+    border-color: var(--accent-linkedin);
+    background: rgba(0, 119, 181, 0.05);
+}
+
+.upload-area.dragover {
+    border-color: var(--accent-linkedin);
+    background: rgba(0, 119, 181, 0.1);
+    transform: scale(1.02);
+}
+
+.upload-content i {
+    font-size: 48px;
+    color: var(--accent-linkedin);
+    margin-bottom: 16px;
+    display: block;
+}
+
+.upload-content h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.upload-content p {
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.upload-content small {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.upload-status {
+    padding: 16px 24px;
+    background: rgba(16, 185, 129, 0.1);
+    border-top: 1px solid rgba(16, 185, 129, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent-green);
+    font-weight: 500;
+}
+
+/* Progress bar for upload */
+.upload-progress {
+    position: relative;
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    margin: 16px 24px;
+    overflow: hidden;
+}
+
+.upload-progress-bar {
+    height: 100%;
+    background: var(--accent-linkedin);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
 }
 
 /* Responsive */
@@ -454,6 +675,23 @@ body {
         flex-direction: column;
         text-align: center;
         gap: 12px;
+    }
+
+    .service-actions {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .upload-area {
+        padding: 24px 16px;
+    }
+
+    .upload-success {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+        text-align: center;
     }
 }
 
@@ -503,7 +741,6 @@ body {
 }
 
 @keyframes bounce {
-
     0%,
     80%,
     100% {
@@ -513,4 +750,24 @@ body {
     40% {
         transform: scale(1);
     }
+}
+
+/* Upload animations */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.uploading {
+    animation: pulse 1.5s infinite;
 }

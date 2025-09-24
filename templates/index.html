@@ -44,7 +44,8 @@
                     Service Connections
                 </div>
                 <div class="auth-services">
-                    <div class="service-card">
+                    <!-- Google Services Card -->
+                    <div class="service-card" id="googleServiceCard">
                         <div class="service-info">
                             <i class="fab fa-google service-icon" style="color: #4285f4;"></i>
                             <div class="service-details">
@@ -52,34 +53,62 @@
                                 <p>Gmail & Calendar integration</p>
                             </div>
                         </div>
-                        <div class="status-badge status-disconnected">
-                            <i class="fas fa-circle" style="font-size: 8px;"></i>
-                            <span>Not Connected</span>
+                        <div class="service-actions">
+                            <div class="status-badge status-disconnected" id="googleStatus">
+                                <i class="fas fa-circle" style="font-size: 8px;"></i>
+                                <span>Not Connected</span>
+                            </div>
+                            <a href="/authorize" class="btn btn-primary">
+                                <i class="fas fa-link"></i>
+                                Connect
+                            </a>
                         </div>
-                        <a href="/authorize" class="btn btn-primary">
-                            <i class="fas fa-link"></i>
-                            Connect
-                        </a>
                     </div>
-                    
-                    <div class="service-card">
+
+                    <!-- LinkedIn Services Card -->
+                    <div class="service-card" id="linkedinServiceCard">
                         <div class="service-info">
-                            <i class="fab fa-instagram service-icon" style="color: #e4405f;"></i>
+                            <i class="fab fa-linkedin service-icon" style="color: #0077b5;"></i>
                             <div class="service-details">
-                                <h4>Instagram</h4>
-                                <p>Profile & media management</p>
+                                <h4>LinkedIn</h4>
+                                <p>Post creation & sharing</p>
                             </div>
                         </div>
-                        <div class="status-badge status-disconnected">
-                            <i class="fas fa-circle" style="font-size: 8px;"></i>
-                            <span>Not Connected</span>
+                        <div class="service-actions">
+                            <div class="status-badge status-disconnected" id="linkedinStatus">
+                                <i class="fas fa-circle" style="font-size: 8px;"></i>
+                                <span>Not Connected</span>
+                            </div>
+                            <a href="/auth/linkedin/start" class="btn btn-primary">
+                                <i class="fas fa-link"></i>
+                                Connect
+                            </a>
                         </div>
-                        <a href="/instagram/authorize" class="btn btn-primary">
-                            <i class="fas fa-link"></i>
-                            Connect
-                        </a>
                     </div>
                 </div>
+            </div>
+
+            <!-- LinkedIn Image Upload Panel (only show when LinkedIn is connected) -->
+            <div class="upload-section">
+                <h4>LinkedIn Image Upload</h4>
+                
+                <!-- Use Jinja2 to check the 'image_is_ready' variable from our backend -->
+                {% if image_is_ready %}
+                    <!-- If an image is ready, show this success message and a Clear button -->
+                    <div class="upload-success">
+                        <p>✅ Image ready for posting!</p>
+                        <form action="{{ url_for('clear_linkedin_image') }}" method="POST" style="display: inline;">
+                            <button type="submit" class="clear-button">Clear</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <!-- Otherwise, show the normal upload form -->
+                    <p><b>Step 1:</b> Upload an image. <br><b>Step 2:</b> Ask the agent to post it.</p>
+                    
+                    <input type="file" id="linkedin-image-file" accept="image/png, image/jpeg, image/gif">
+                    <button onclick="handleImageUpload()">Upload Image for Posting</button>
+                    <div id="upload-status"></div>
+                {% endif %}
             </div>
 
             <!-- Chat Container -->
@@ -107,7 +136,7 @@
                             <i class="fas fa-comments"></i>
                             <div>Start a conversation with your AI assistant</div>
                             <p style="margin-top: 8px; font-size: 14px; opacity: 0.7;">
-                                Try asking about weather, sending emails, managing calendar events, or general questions!
+                                Try asking about weather, sending emails, managing calendar events, posting on LinkedIn, or general questions!
                             </p>
                         </div>
                     {% endif %}

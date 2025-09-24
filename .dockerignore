@@ -1,0 +1,16 @@
+# Ignore virtual environment
+venv/
+__pycache__/
+
+# Ignore Git directory
+.git/
+.gitignore
+
+# Ignore environment files and secrets
+.env
+credentials.json
+*.json
+
+# Ignore Docker files
+Dockerfile
+.dockerignore
