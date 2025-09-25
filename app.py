@@ -34,7 +34,15 @@ from google.auth.transport.requests import Request
 # ENV SETUP
 # ==============================================
 load_dotenv()
+from supabase import create_client, Client
 
+# Initialize Supabase
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
+if not supabase_url or not supabase_key:
+    raise ValueError("Supabase URL and Key must be set in the environment variables.")
+supabase: Client = create_client(supabase_url, supabase_key)
+print("✅ Supabase client initialized")
 # Flask setup
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1) 
@@ -69,16 +77,57 @@ SCOPES = [
 ]
 
 def get_linkedin_credentials():
-    """Gets the current user's LinkedIn credentials from their session."""
-    # Note: We are not handling token refresh here for simplicity,
-    # as LinkedIn tokens are long-lived. A full production app would add refresh logic.
-    if "linkedin_token" not in session:
+    """
+    Gets the current user's LinkedIn credentials from Supabase.
+    Returns the token and user data in the same format as the old session method.
+    """
+    # 1. Get the current user's session_id
+    session_id = session.get("session_id")
+    if not session_id:
+        return None, None # No user session
+
+    # 2. Query Supabase for the stored credentials
+    try:
+        response = supabase.table("user_credentials").select("*").eq("session_id", session_id).eq("provider", "linkedin").execute()
+        
+        if not response.data:
+            print("🔍 No LinkedIn credentials found in Supabase for this session.")
+            return None, None
+        
+        cred_data = response.data[0]
+
+    except Exception as e:
+        print(f"❌ Error fetching LinkedIn credentials from Supabase: {e}")
         return None, None
+
+    # 3. Check if the access token has expired
+    expires_at_str = cred_data.get("expires_at")
+    if expires_at_str:
+        # Convert the ISO format string back to a timezone-aware datetime object
+        expires_at = datetime.fromisoformat(expires_at_str)
+        if datetime.now(timezone.utc) > expires_at:
+            print("⏳ LinkedIn token has expired. User needs to re-authenticate.")
+            # We can optionally delete the expired token to keep the table clean
+            supabase.table("user_credentials").delete().eq("id", cred_data['id']).execute()
+            return None, None
+
+    # 4. Reconstruct the token and user data in the original expected format
+    # This ensures we don't have to change the tools that use this function.
+    token_data = {
+        "access_token": cred_data.get("access_token")
+        # You can add other token-related fields here if needed in the future
+    }
     
-    token_data = session["linkedin_token"]
-    user_data = session["linkedin_user"]
-    
-    # We pass back the whole token object for the API calls
+    user_data = {
+        "urn": cred_data.get("other_details", {}).get("urn")
+        # The 'other_details' JSONB column holds the user-specific info
+    }
+
+    # Check if we successfully retrieved the URN
+    if not user_data["urn"]:
+         print("❌ Critical error: URN not found in Supabase record for LinkedIn.")
+         return None, None
+
     return token_data, user_data
 
 def post_to_linkedin_api(access_token: str, author_urn: str, text: str, asset_urn: str = None) -> dict:
@@ -200,27 +249,72 @@ def get_weather_data(city: str) -> str:
 
 
 def get_google_credentials():
-    """Get Google credentials from session (works for both Gmail and Calendar)"""
-    if "credentials" not in session:
+    """
+    Get Google credentials from Supabase for the current session.
+    Handles token refresh and updates the database if necessary.
+    """
+    # 1. Get the current user's session_id
+    session_id = session.get("session_id")
+    if not session_id:
+        return None # No user session
+
+    # 2. Query Supabase for the stored credentials
+    try:
+        response = supabase.table("user_credentials").select("*").eq("session_id", session_id).eq("provider", "google").execute()
+        
+        # Check if any credentials were found
+        if not response.data:
+            print("🔍 No Google credentials found in Supabase for this session.")
+            return None
+
+        cred_data = response.data[0]
+
+    except Exception as e:
+        print(f"❌ Error fetching credentials from Supabase: {e}")
         return None
 
-    creds_data = session["credentials"]
-    creds = Credentials.from_authorized_user_info(creds_data, SCOPES)
-
-    # Check if credentials are expired and refresh if needed
+    # 3. Rebuild the Credentials object from the stored data
+    # The other_details JSONB column holds the info needed by from_authorized_user_info
+    info = {
+        "token": cred_data.get("access_token"),
+        "refresh_token": cred_data.get("refresh_token"),
+        **cred_data.get("other_details", {}) # Unpack the rest of the details
+    }
+    
+    creds = Credentials.from_authorized_user_info(info, SCOPES)
+    
+    # 4. Check if credentials are expired and refresh if needed
     if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-        # Update session with refreshed credentials
-        session["credentials"] = json.loads(creds.to_json())
+        print("⏳ Google token expired. Refreshing...")
+        try:
+            creds.refresh(Request())
+            
+            # 5. IMPORTANT: Save the refreshed credentials back to Supabase
+            print("💾 Saving refreshed token back to Supabase...")
+            updated_data = {
+                "access_token": creds.token,
+                "expires_at": creds.expiry.isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # We update the specific record using its primary key `id`
+            supabase.table("user_credentials").update(updated_data).eq("id", cred_data['id']).execute()
+            print("✅ Token refreshed and saved successfully.")
+
+        except Exception as e:
+            print(f"❌ Failed to refresh or save Google token: {e}")
+            # If refresh fails, the user may need to re-authenticate
+            # We can delete the broken credentials to force a new login
+            supabase.table("user_credentials").delete().eq("id", cred_data['id']).execute()
+            return None
 
     return creds
 
 
-# Keeping the old function name for backward compatibility
+# This alias function will now automatically use the new Supabase logic
 def get_gmail_credentials():
     """Get Gmail credentials from session (alias for get_google_credentials)"""
     return get_google_credentials()
-
 
 @tool
 def get_today_date() -> str:
@@ -724,26 +818,62 @@ def oauth2callback():
     if not client_secrets_str:
        raise ValueError("OAUTH_CLIENT_SECRETS_JSON environment variable not set.")
     client_config = json.loads(client_secrets_str)
-    
-    # THIS LINE IS WRONG
+
     flow = Flow.from_client_config(
         client_config,
         scopes=SCOPES,
         state=state,
         redirect_uri=url_for("oauth2callback", _external=True),
     )
-    ...
 
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
-    session["credentials"] = json.loads(creds.to_json())
 
-    print("✅ Google authorization successful (Gmail + Calendar), credentials saved")
+    # --- START: NEW SUPABASE LOGIC ---
+    # Instead of saving to session, we save to Supabase
+    session_id = session.get("session_id")
+    if not session_id:
+        # This should ideally not happen if home() is visited first
+        return "Error: No session found. Please go to the homepage first.", 500
+
+    # Prepare the data for Supabase
+    credentials_data = {
+        "session_id": session_id,
+        "provider": "google",
+        "access_token": creds.token,
+        "refresh_token": creds.refresh_token,
+        # google-auth library uses UTC datetime object for expiry
+        "expires_at": creds.expiry.isoformat(),
+        # Store other useful info in the JSONB column
+        "other_details": {
+            "token_uri": creds.token_uri,
+            "client_id": creds.client_id,
+            "client_secret": creds.client_secret,
+            "scopes": creds.scopes,
+        }
+    }
+
+    # Use upsert: it will INSERT a new row or UPDATE if one already exists
+    # for this session_id and provider. This handles re-authentication gracefully.
+    response = supabase.table("user_credentials").upsert(credentials_data, on_conflict="session_id,provider").execute()
+    
+    # Check for errors from Supabase
+    if response.data is None and response.error is not None:
+         print(f"❌ Supabase error: {response.error.message}")
+         return f"Error saving credentials: {response.error.message}", 500
+
+    # We remove the old session data
+    session.pop("credentials", None)
+    # --- END: NEW SUPABASE LOGIC ---
+
+
+    print("✅ Google authorization successful, credentials saved to Supabase")
     return redirect(url_for("home"))
 
 
 @app.route("/status")
 def google_status():
+    # This function now checks Supabase instead of the session
     creds = get_google_credentials()
     if creds:
         return {
@@ -773,12 +903,11 @@ def linkedin_start_auth():
 @app.route('/auth/linkedin/callback')
 def linkedin_callback():
     try:
-        # Step 1: Manually get the authorization code from the URL
+        # Step 1 & 2: Manually exchange code for token (this part is unchanged)
         code = request.args.get('code')
         if not code:
             return "Authentication failed: No code returned from LinkedIn.", 400
 
-        # Step 2: Manually prepare the request to exchange the code for a token
         token_url = 'https://www.linkedin.com/oauth/v2/accessToken'
         params = {
             'grant_type': 'authorization_code',
@@ -787,25 +916,55 @@ def linkedin_callback():
             'client_id': os.getenv('LI_CLIENT_ID'),
             'client_secret': os.getenv('LI_CLIENT_SECRET')
         }
-
-        # Step 3: Manually make the POST request, bypassing the broken library function
         response = requests.post(token_url, data=params)
         response.raise_for_status()
-        token = response.json()
+        token = response.json() # Contains access_token and expires_in (in seconds)
 
-        # Step 4: Use the token to fetch the user's info
+        # Step 3: Use token to get user info (unchanged)
         user_info_resp = oauth.linkedin.get('userinfo', token=token)
         user_info_resp.raise_for_status()
         user_info = user_info_resp.json()
+        author_urn = f"urn:li:person:{user_info['sub']}"
 
-        # Step 5: Save the token and user data to the user's personal session
-        session['linkedin_token'] = token
-        session['linkedin_user'] = {
-            'urn': f"urn:li:person:{user_info['sub']}",
-            'name': f"{user_info.get('given_name', '')} {user_info.get('family_name', '')}".strip()
-        }
+
+        # --- START: NEW SUPABASE LOGIC ---
+        # 4. Save the token and user data to Supabase instead of the session
+        session_id = session.get("session_id")
+        if not session_id:
+            return "Error: No session found. Please go to the homepage first.", 500
         
-        print("✅ LinkedIn authorization successful (manual exchange), credentials saved to session.")
+        # Calculate the expiry timestamp
+        # `expires_in` is in seconds, so we add it to the current time
+        expires_in = token.get('expires_in', 3600) # Default to 1 hour if not present
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+
+        credentials_data = {
+            "session_id": session_id,
+            "provider": "linkedin",
+            "access_token": token['access_token'],
+            # LinkedIn's basic OAuth flow doesn't always provide a refresh token
+            "refresh_token": token.get('refresh_token'), 
+            "expires_at": expires_at.isoformat(),
+            "other_details": {
+                "urn": author_urn,
+                "name": f"{user_info.get('given_name', '')} {user_info.get('family_name', '')}".strip(),
+                "scope": token.get('scope')
+            }
+        }
+
+        # Upsert the data into our central credentials table
+        response = supabase.table("user_credentials").upsert(credentials_data, on_conflict="session_id,provider").execute()
+
+        if response.data is None and response.error is not None:
+            print(f"❌ Supabase error: {response.error.message}")
+            return f"Error saving credentials: {response.error.message}", 500
+
+        # 5. Clear the old session data
+        session.pop('linkedin_token', None)
+        session.pop('linkedin_user', None)
+        # --- END: NEW SUPABASE LOGIC ---
+
+        print("✅ LinkedIn authorization successful, credentials saved to Supabase.")
         return redirect(url_for("home"))
 
     except Exception as e:
@@ -815,11 +974,12 @@ def linkedin_callback():
     
 @app.route("/linkedin-status")
 def linkedin_status():
-    """Checks if the CURRENT user has a LinkedIn account connected in their session."""
-    # Check for user info in the session, not the database
-    if 'linkedin_user' in session:
-        user_name = session['linkedin_user'].get('name', 'N/A')
-        return {"status": "authorized", "name": user_name}
+    """Checks if the CURRENT user has a LinkedIn account connected in Supabase."""
+    # This function now checks Supabase instead of the session
+    token, user = get_linkedin_credentials()
+    if token and user:
+        # We can't get the name easily anymore, so let's simplify the response
+        return {"status": "authorized", "name": "Connected"}
     else:
         return {"status": "not_authorized"}
 
