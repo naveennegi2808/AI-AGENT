@@ -47,7 +47,9 @@ print("✅ Supabase client initialized")
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1) 
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "a-truly-secret-key-for-production")
-
+from datetime import timedelta
+# Tells Flask to make sessions permanent and last for 30 days
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 # LinkedIn OAuth Setup
 # Explanation: This configures Authlib to handle the LinkedIn OAuth2 flow.
 # We define the URLs and the permissions (scopes) our app needs.
@@ -746,7 +748,7 @@ def format_chat_history(history: ChatMessageHistory) -> str:
 def home():
     if "session_id" not in session:
         session["session_id"] = os.urandom(24).hex()
-
+        session.permanent = True
     session_id = session["session_id"]
     response = None
 
