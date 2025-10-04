@@ -4,6 +4,10 @@ FROM python:3.11-slim
 # Set an environment variable to prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Copy requirements FIRST to leverage Docker layer caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 # Update, install prerequisites, add Chrome repo, install Chrome, and clean up in one layer
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -17,12 +21,14 @@ RUN apt-get update \
     && apt-get purge -y --auto-remove curl gnupg \
     && rm -rf /var/lib/apt/lists/*
 
+# --- THIS IS THE FIX ---
+# Pre-download and install the correct chromedriver during the build
+# It will be automatically available in the system's PATH
+RUN python -c "from webdriver_manager.chrome import ChromeDriverManager; ChromeDriverManager().install()"
+# --- END OF FIX ---
+
 # Set the working directory
 WORKDIR /app
-
-# Copy and install Python requirements
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
 COPY . .
@@ -30,5 +36,5 @@ COPY . .
 # Expose the port Render will use
 EXPOSE 10000
 
-# Run the application
+# Run the application using the shell form to parse the $PORT variable
 CMD gunicorn --bind 0.0.0.0:$PORT app:app

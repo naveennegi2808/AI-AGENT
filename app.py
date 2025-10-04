@@ -611,13 +611,12 @@ def create_isolated_selenium_driver():
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
     
-    # --- THIS IS THE CRITICAL FIX ---
     # Create a unique, temporary user profile directory for each session
     user_data_dir = f"/tmp/selenium_profiles/{uuid.uuid4()}"
     chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
     # --- END OF FIX ---
 
-    service = ChromeService(ChromeDriverManager().install())
+    service = ChromeService()
     driver = webdriver.Chrome(service=service, options=chrome_options)
     print("✅ Created new isolated Selenium driver instance.")
     return driver    
