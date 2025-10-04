@@ -25,14 +25,7 @@ from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService 
-chrome_options = Options()
-chrome_options.add_argument("--headless")  # Ensure GUI is off
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--window-size=1920,1080") 
-driver = webdriver.Chrome(options=chrome_options)
-driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=chrome_options)
+import uuid
 # --- LangChain Imports ---
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
@@ -605,6 +598,30 @@ def post_on_linkedin(action_input: str) -> str:
     except Exception as e:
         return f"❌ An unexpected error occurred: {str(e)}"
     
+
+def create_isolated_selenium_driver():
+    """
+    Creates and returns a new Selenium Chrome driver instance with all necessary options
+    for a stable, isolated session in a production environment.
+    """
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+    
+    # --- THIS IS THE CRITICAL FIX ---
+    # Create a unique, temporary user profile directory for each session
+    user_data_dir = f"/tmp/selenium_profiles/{uuid.uuid4()}"
+    chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
+    # --- END OF FIX ---
+
+    service = ChromeService(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    print("✅ Created new isolated Selenium driver instance.")
+    return driver    
+    
 def scrape_with_selenium(url: str) -> str:
     """
     Uses Selenium in a visible browser to reliably get the full HTML of a page.
@@ -612,7 +629,7 @@ def scrape_with_selenium(url: str) -> str:
     """
     print("🤖 Starting Selenium scraper for analysis")
     
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    driver = create_isolated_selenium_driver()
     
     try:
         driver.get(url)
@@ -629,7 +646,7 @@ def execute_selenium_fill(url: str, mapped_form_data: dict, user_data: dict):
     This is the definitive script. It interacts with every component
     using the correct, proven method for that component.
     """
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    driver = create_isolated_selenium_driver()
     driver.maximize_window()
     
     print(f"🤖 Navigating to {url} with Definitive Selenium Engine...")
