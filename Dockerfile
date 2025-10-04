@@ -22,6 +22,7 @@ EXPOSE 8000
 
 # Run app.py when the container launches
 # Use gunicorn for production deployments for a more robust server
-# CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
+
 # For development/simpler cases, you can use:
-CMD ["python", "app.py"]
+# CMD ["python", "app.py"]
