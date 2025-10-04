@@ -16,7 +16,6 @@ from authlib.integrations.flask_client import OAuth
 from pydantic import BaseModel, Field
 #--Selenium Import---
 import time
-from botasaurus.soupify import soupify
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
