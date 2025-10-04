@@ -1,28 +1,34 @@
 # Start with an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Set the working directory in the container
+# Install system dependencies needed for Chrome and webdriver-manager
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    libglib2.0-0 \
+    libnss3 \
+    libgconf-2-4 \
+    libfontconfig1 \
+    --no-install-recommends
+
+# Download and install the latest stable version of Google Chrome
+RUN curl -sS -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get -y update \
+    && apt-get -y install google-chrome-stable
+
+# Set the working directory
 WORKDIR /app
 
-# Copy the requirements file into the container at /app
+# Copy and install requirements
 COPY requirements.txt .
-
-# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of your application code into the container at /app
+# Copy the rest of the application
 COPY . .
 
-# Make port 8000 available to the world outside this container
-# (If your app runs on a different port, change it here)
-EXPOSE 8000
+# Expose the port Render will use
+EXPOSE 10000
 
-# Define environment variables if needed (can also be passed at runtime)
-# ENV NAME World
-
-# Run app.py when the container launches
-# Use gunicorn for production deployments for a more robust server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
-
-# For development/simpler cases, you can use:
-# CMD ["python", "app.py"]
+# Run the application
+CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "app:app"]

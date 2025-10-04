@@ -83,3 +83,5 @@ zstandard==0.25.0
 Authlib>=1.0.0
 supabase
 selenium
+gunicorn
+webdriver-manager
