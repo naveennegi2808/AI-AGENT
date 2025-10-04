@@ -31,4 +31,4 @@ COPY . .
 EXPOSE 10000
 
 # Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "app:app"]
+CMD gunicorn --bind 0.0.0.0:$PORT app:app
