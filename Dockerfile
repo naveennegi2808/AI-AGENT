@@ -37,4 +37,4 @@ COPY . .
 EXPOSE 10000
 
 # Run the application using the shell form to parse the $PORT variable
-CMD gunicorn --bind 0.0.0.0:$PORT app:app
+CMD gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 300 app:app
