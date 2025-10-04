@@ -14,6 +14,16 @@ from dotenv import load_dotenv
 from authlib.integrations.flask_client import OAuth
 # --- Pydantic Import ---
 from pydantic import BaseModel, Field
+#--Selenium Import---
+import time
+from botasaurus.soupify import soupify
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
 # --- LangChain Imports ---
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
@@ -586,6 +596,210 @@ def post_on_linkedin(action_input: str) -> str:
     except Exception as e:
         return f"❌ An unexpected error occurred: {str(e)}"
     
+def scrape_with_selenium(url: str) -> str:
+    """
+    Uses Selenium in a visible browser to reliably get the full HTML of a page.
+    This is the proven method that defeats anti-bot measures.
+    """
+    print("🤖 Starting Selenium scraper for analysis")
+    
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    
+    try:
+        driver.get(url)
+        # Wait for the main form element to be present
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, "form")))
+        print("  - Form loaded successfully. Returning HTML.")
+        html = driver.page_source
+        return html
+    finally:
+        driver.quit()
+
+def execute_selenium_fill(url: str, mapped_form_data: dict, user_data: dict):
+    """
+    This is the definitive script. It interacts with every component
+    using the correct, proven method for that component.
+    """
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    driver.maximize_window()
+    
+    print(f"🤖 Navigating to {url} with Definitive Selenium Engine...")
+    driver.get(url)
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "userForm")))
+    print("  - Page and form loaded. Starting to fill form.")
+
+    screenshot_dir = os.path.join("output", "final_screenshots")
+    os.makedirs(screenshot_dir, exist_ok=True)
+    driver.save_screenshot(os.path.join(screenshot_dir, "0_page_loaded.png"))
+
+    for field_id, value in mapped_form_data.items():
+        try:
+            print(f"\n--- Processing Field ID: '{field_id}' with Value: '{value}' ---")
+            
+            element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, field_id)))
+            driver.execute_script("arguments[0].scrollIntoView(true);", element)
+            time.sleep(0.5)
+
+            
+            if 'gender' in field_id or 'hobbies' in field_id:
+                label_selector = f"//label[@for='{field_id}']"
+                label_element = driver.find_element(By.XPATH, label_selector)
+                label_element.click()
+                print(f"  - ✅ Clicked label: '{label_element.text}'")
+            
+            
+            elif field_id == "dateOfBirthInput":
+                print(f"  - Interacting with date picker for '{value}'...")
+               
+                date_obj = datetime.strptime(value, "%d %b %Y")
+                
+                element.click() # 1. Click the input to open the calendar
+                
+                # 2. Select the Year from its dropdown
+                year_dropdown = Select(WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CLASS_NAME, 'react-datepicker__year-select'))))
+                year_dropdown.select_by_visible_text(date_obj.strftime("%Y"))
+                
+                # 3. Select the Month from its dropdown
+                month_dropdown = Select(WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CLASS_NAME, 'react-datepicker__month-select'))))
+                month_dropdown.select_by_visible_text(date_obj.strftime("%B"))
+                
+                # 4. Select the Day by clicking it
+                day_selector = f"//div[contains(@class, 'react-datepicker__day') and not(contains(@class, 'outside-month')) and text()='{date_obj.day}']"
+                day_element = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, day_selector)))
+                day_element.click()
+                print("  - ✅ Date set.")
+
+            elif field_id == "uploadPicture":
+                element.send_keys(value)
+                print("  - ✅ File path sent.")
+
+            elif field_id == "subjectsInput":
+                element.send_keys(value)
+                time.sleep(0.5)
+                element.send_keys(Keys.ENTER)
+                print(f"  - ✅ Selected subject '{value}'.")
+
+            elif field_id == "state":
+                # Handle state selection
+                element.send_keys(value)
+                time.sleep(0.5)
+                
+                option_selector = f"//div[contains(@class, 'option') and text()='{value}']"
+                option = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, option_selector))
+                )
+                option.click()
+                print(f"  - ✅ Selected state '{value}'.")
+                
+            elif field_id == "city":
+                # Wait for city dropdown to become enabled after state selection
+                WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.ID, "city"))
+                )
+                
+                # Click to open the dropdown
+                element.click()
+                time.sleep(0.3)
+                
+                # Type the city name
+                element.send_keys(value)
+                time.sleep(0.5)
+                
+                # Select the option
+                option_selector = f"//div[contains(@class, 'option') and text()='{value}']"
+                option = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, option_selector))
+                )
+                option.click()
+                print(f"  - ✅ Selected city '{value}'.")
+
+            else: # Standard text fields
+                element.clear()
+                element.send_keys(value)
+                print("  - ✅ Typed.")
+
+        except Exception as e:
+            print(f"  - ❌ An error occurred on field '{field_id}': {e}")
+    
+    print("\n\n✅ Form filling process complete. Submitting form...")
+    submit_button = driver.find_element(By.ID, "submit")
+    driver.execute_script("arguments[0].click();", submit_button)
+    print("✅ Form submitted!")
+    time.sleep(5)
+    driver.save_screenshot(os.path.join(screenshot_dir, "2_form_submitted.png"))
+
+    print("\n🎉🎉🎉 100% COMPLETE. CONGRATULATIONS. THIS IS IT. 🎉🎉🎉")
+    time.sleep(20)
+    driver.quit()
+
+@tool
+def fill_job_application(action_input: str) -> str:
+    """
+    Automates filling a web form using a robust Selenium backend.
+    """
+    try:
+        input_data = json.loads(action_input)
+    except json.JSONDecodeError:
+        return f"❌ Error: The agent provided an invalid JSON string: {action_input}"
+
+    url = input_data.get("url")
+    user_data = input_data.get("user_data")
+
+    if not url:
+        return "❌ Error: The JSON input must contain a 'url' key."
+
+    # --- Mode 1: Analyze the form with Selenium ---
+    if user_data is None:
+        print(f"🤖 Starting Selenium Analysis for URL: {url}")
+        try:
+            html_content = scrape_with_selenium(url)
+            analysis_prompt = f"""
+            Analyze the following HTML. Your ONLY output must be a single line starting with "Analysis complete. To fill out the form, I need the following details from you: "
+            Followed by a simple, comma-separated list of the main visible labels (e.g., Name, Email, Gender, Hobbies).
+
+            HTML Content:
+            {html_content}
+            """
+            analysis_response = llm.invoke(analysis_prompt)
+            return analysis_response.content
+        except Exception as e:
+            return f"❌ An error occurred during the Selenium analysis phase: {str(e)}"
+
+    # --- Mode 2: Map data and fill with Selenium ---
+    else:
+        print(f"🤖 Starting Selenium Execution for URL: {url}")
+        try:
+            html_content = scrape_with_selenium(url)
+            # This is the definitive prompt for our proven execution engine
+            mapping_prompt = f"""
+            Translate the User Data into a JSON object for a Selenium bot.
+            The keys MUST be the EXACT 'id' attributes from the HTML.
+            For radio buttons and checkboxes, use the 'id' of the specific option the user chose.
+
+            IMPORTANT: For the 'Date of Birth', you MUST convert the user's date (e.g., '28/09/2004') into the exact format 'DD Month YYYY' (e.g., '28 Sep 2004').
+
+            User Data: {json.dumps(user_data)}
+            HTML Content: {html_content}
+
+            Return ONLY the final, translated JSON object.
+            """
+            print("🤖 Asking LLM to perform direct mapping for Selenium...")
+            mapping_response = llm.invoke(mapping_prompt)
+            mapped_data_str = mapping_response.content.strip()
+            
+            if mapped_data_str.startswith("```json"):
+                mapped_data_str = mapped_data_str[7:-4]
+
+            final_mapped_data = json.loads(mapped_data_str)
+            print(f"🤖 LLM produced ACCURATE mapping: {final_mapped_data}")
+
+            # Call the proven Selenium execution function
+            execute_selenium_fill(url, final_mapped_data, user_data)
+            return "✅ The form has been filled on your behalf. This was successful."
+
+        except Exception as e:
+            return f"❌ An error occurred during the Selenium form filling phase: {str(e)}"
+
 # Initialize tools
 search = DuckDuckGoSearchRun()
 
@@ -596,7 +810,7 @@ def search_the_web(query: str) -> str:
     or information about places. For example, use it to find the capital of a state or country.
     """
     return search.run(query)
-tools = [search_the_web, get_weather_data, get_today_date, send_email, create_calendar_event, get_calendar_events, delete_calendar_event,post_on_linkedin]
+tools = [fill_job_application,search_the_web, get_weather_data, get_today_date, send_email, create_calendar_event, get_calendar_events, delete_calendar_event,post_on_linkedin]
 
 # ==============================================
 # LLM SETUP
@@ -670,6 +884,14 @@ If the user doesn't provide required information, ask for clarification first.
 
 FOR LINKEDIN OPERATIONS:
 - When using `post_on_linkedin`, provide Action Input as a valid JSON object with: "text".
+
+**HANDLING TOOL ERRORS:**
+- If a tool returns a message starting with "❌ Error:", your one and only job is to output that exact error message to the user as your "Final Answer". Do not try to call the tool again or apologize. Just report the error.
+
+**FOR JOB APPLICATION OPERATIONS (Follow these steps precisely):**
+1.  **Analyze First:** When the user gives you a job URL, your FIRST and ONLY action is to call the `fill_job_application` tool with JUST the `url`.
+2.  **Ask for Details:** The tool will return a message starting with "Analysis complete...". When you see this, your ONLY next step is to output this exact message to the user as your "Final Answer".
+3.  **Gather and Execute:** The user will provide their data. Now, call the `fill_job_application` tool for the SECOND time, including both the `url` and the `user_data`.
 
 Use this format for reasoning and actions:
 
