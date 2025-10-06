@@ -1119,7 +1119,6 @@ def oauth2callback():
     print("✅ Google authorization successful, credentials saved to Supabase")
     return redirect(url_for("home"))
 
-
 @app.route("/status")
 def google_status():
     # This function now checks Supabase instead of the session
@@ -1136,8 +1135,6 @@ def google_status():
             "message": "Google services not authorized. Visit /authorize to connect",
             "services": []
         }
-
-
 
 @app.route("/gmail-status")
 def gmail_status():
